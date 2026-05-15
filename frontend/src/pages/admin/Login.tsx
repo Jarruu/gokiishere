@@ -7,6 +7,42 @@ import { BrutalistCard } from '../../components/ui/BrutalistCard';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../lib/auth';
 
+const MarqueeRow: React.FC<{ reverse?: boolean; duration?: number }> = ({ 
+  reverse = false, 
+  duration = 20 
+}) => {
+  const content = (
+    <div className="flex shrink-0">
+      {[...Array(4)].map((_, i) => (
+        <span key={i} className="text-[6vw] font-black tracking-tighter uppercase px-8 flex items-center whitespace-nowrap">
+          <span className="text-black/15">GOKI</span>
+          <span className="text-brand-red/25">IS</span>
+          <span className="text-black/15">HERE</span>
+        </span>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="flex overflow-hidden py-1 select-none w-full">
+      <motion.div
+        animate={{
+          x: reverse ? ["-50%", "0%"] : ["0%", "-50%"],
+        }}
+        transition={{
+          duration: duration,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+        className="flex"
+      >
+        {content}
+        {content}
+      </motion.div>
+    </div>
+  );
+};
+
 const Login: React.FC = () => {
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
@@ -42,10 +78,25 @@ const Login: React.FC = () => {
   }, null);
 
   return (
-    <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6 bg-brand-red/5">
+    <div className="min-h-[calc(100vh-180px)] flex items-center justify-center p-6 relative bg-brand-yellow isolate overflow-hidden">
+      {/* Background Container - Improved coverage and infinite marquee */}
+      <div className="absolute inset-0 -z-10 pointer-events-none bg-brand-yellow">
+        <div 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vh] rotate-[-12deg] flex flex-col justify-center"
+        >
+          {[...Array(15)].map((_, i) => (
+            <MarqueeRow 
+              key={i} 
+              reverse={i % 2 === 0} 
+              duration={30 + (i % 5) * 5} 
+            />
+          ))}
+        </div>
+      </div>
+
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <BrutalistCard className="p-8 bg-white">

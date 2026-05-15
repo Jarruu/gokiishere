@@ -56,32 +56,35 @@ const AnimatedWord = ({ word }: { word: string }) => {
 };
 
 const ScrollingColumn = ({ items, direction = "up" }: { items: any[], direction?: "up" | "down" }) => {
-  const displayItems = [...items, ...items, ...items, ...items];
+  // Duplicate items for a truly seamless infinite loop
+  const displayItems = [...items, ...items];
   
   return (
     <div className="relative h-full w-full overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_90%,transparent)]">
       <motion.div
         animate={{
-          y: direction === "up" ? [0, -items.length * 200] : [-items.length * 200, 0],
+          y: direction === "up" ? ["0%", "-50%"] : ["-50%", "0%"],
         }}
         transition={{
-          duration: items.length * 5,
+          duration: items.length * 6, // Smooth, professional speed
           repeat: Infinity,
           ease: "linear",
         }}
-        className="flex flex-col gap-6 py-4"
+        className="flex flex-col"
       >
         {displayItems.map((item, idx) => (
           <div
             key={idx}
-            className="w-full border-2 border-black shadow-[6px_6px_0px_0px_var(--color-black)] overflow-hidden shrink-0 group relative bg-white"
+            className="w-full px-2 pb-6 shrink-0"
           >
-            <img 
-              src={item.src} 
-              alt="Portfolio" 
-              className="w-full h-auto block transition-all duration-700 ease-out" 
-            />
-            <div className="absolute inset-0 bg-brand-red/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="w-full border-2 border-black shadow-[6px_6px_0px_0px_var(--color-black)] overflow-hidden group relative bg-white">
+              <img 
+                src={item.src} 
+                alt="Portfolio" 
+                className="w-full h-auto block transition-all duration-700 ease-out" 
+              />
+              <div className="absolute inset-0 bg-brand-red/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            </div>
           </div>
         ))}
       </motion.div>
@@ -112,7 +115,7 @@ export const Hero: React.FC = () => {
   return (
     <section id="home" className="lg:min-h-[calc(100vh-98px)] py-8 md:py-10 p-6 md:p-10 lg:p-12 flex flex-col justify-center border-b-2 border-black relative overflow-hidden bg-white">
       {/* Background Text */}
-      <div className="absolute top-1/2 left-[-2%] -translate-y-1/2 text-[300px] font-black opacity-[0.02] select-none pointer-events-none hidden lg:block leading-none">
+      <div className="absolute top-1/2 left-[-2%] -translate-y-1/2 text-[300px] font-black opacity-[0.04] select-none pointer-events-none hidden lg:block leading-none">
         GOKI
       </div>
 
@@ -186,10 +189,10 @@ export const Hero: React.FC = () => {
           <div className="absolute inset-0 z-30 pointer-events-none rounded-sm border-[4px] border-transparent shadow-[inset_0_0_15px_rgba(255,190,11,0.08)]" />
           
           <div className="relative bg-black/[0.005] rounded-sm overflow-hidden border-x border-black/5">
-            <ScrollingColumn items={COLUMN_1} direction="up" />
+            <ScrollingColumn items={COLUMN_2} direction="down" />
           </div>
           <div className="relative bg-black/[0.005] rounded-sm overflow-hidden border-x border-black/5">
-            <ScrollingColumn items={COLUMN_2} direction="down" />
+            <ScrollingColumn items={COLUMN_1} direction="up" />
           </div>
         </div>
       </div>

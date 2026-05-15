@@ -44,6 +44,24 @@
     }
 }
 
+/* Marquee Animation */
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.custom-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee var(--duration, 30s) linear infinite;
+}
+
+.custom-marquee-reverse {
+    display: flex;
+    width: max-content;
+    animation: marquee var(--duration, 30s) linear infinite reverse;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 10px;
