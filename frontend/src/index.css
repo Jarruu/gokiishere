@@ -1,0 +1,56 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+    --color-brand-red: #AB1509;
+    --color-brand-yellow: #FFF7D3;
+    --color-off-black: #1A1A1A;
+
+    --color-bg-base: var(--color-brand-yellow);
+    --color-text-base: var(--color-off-black);
+
+    /* Overriding standard colors to enforce the theme */
+    --color-black: var(--color-off-black);
+    --color-white: var(--color-brand-yellow);
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+    body {
+        @apply bg-[var(--color-bg-base)] text-[var(--color-text-base)] font-sans antialiased selection:bg-[var(--color-brand-red)] selection:text-[var(--color-brand-yellow)];
+    }
+}
+
+@layer components {
+    .brutalist-card {
+        @apply bg-white border-2 border-black shadow-[4px_4px_0px_0px_var(--color-black)] transition-all hover:shadow-[6px_6px_0px_0px_var(--color-black)] hover:-translate-x-0.5 hover:-translate-y-0.5;
+    }
+
+    .brutalist-button {
+        @apply border-2 border-black font-black uppercase tracking-tighter px-6 py-3 transition-all active:translate-x-0.5 active:translate-y-0.5;
+    }
+
+    .brutalist-shadow-lg {
+        @apply shadow-[8px_8px_0px_0px_var(--color-black)];
+    }
+
+    .tech-ticker {
+        @apply flex whitespace-nowrap gap-12 font-mono text-[10px] uppercase font-bold tracking-widest items-center;
+    }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+::-webkit-scrollbar-track {
+    @apply bg-transparent border-l-2 border-black;
+}
+::-webkit-scrollbar-thumb {
+    @apply bg-black hover:bg-brand-red transition-colors;
+}

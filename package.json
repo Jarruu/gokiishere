@@ -1,0 +1,9 @@
+{
+  "name": "gokiishere-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm recursive run dev",
+    "build": "pnpm recursive run build",
+    "install-all": "pnpm install"
+  }
+}
