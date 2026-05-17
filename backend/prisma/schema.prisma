@@ -9,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 model Admin {
@@ -26,9 +26,9 @@ model Project {
   category     Category
   image        String
   description  String
-  fullContent  String   @db.Text
-  techStack    String[]
-  completedIn  String   // e.g. "2026"
+  fullContent  String
+  techStack    Json
+  completedIn  String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

@@ -8,7 +8,7 @@ import { PortfolioItem } from "../../types";
 import { toast } from "sonner";
 import { useAuth } from "../../lib/auth";
 import { Dropdown } from "../../components/ui/Dropdown";
-import { getProjects, deleteProject, invalidateCache } from "../../lib/api";
+import { getProjects, deleteProject, invalidateCache, resolveAssetUrl } from "../../lib/api";
 
 const AdminPortfolioContent: React.FC<{
   searchQuery: string;
@@ -136,7 +136,7 @@ const AdminPortfolioContent: React.FC<{
               <BrutalistCard className="overflow-hidden group-hover:border-brand-red transition-colors">
                 <div className="h-48 bg-brand-yellow border-b-2 border-black overflow-hidden relative">
                   <img
-                    src={item.image}
+                    src={resolveAssetUrl(item.image)}
                     alt={item.title}
                     className="w-full h-full object-cover transition-all duration-500"
                   />

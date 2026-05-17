@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BrutalistCard } from "../components/ui/BrutalistCard";
 import { PortfolioItem } from "../types";
-import { getProjects } from "../lib/api";
+import { getProjects, resolveAssetUrl } from "../lib/api";
 import { ProjectCardSkeleton } from "../components/skeletons/ProjectCardSkeleton";
 import { Breadcrumb } from "../components/ui/Breadcrumb";
 
@@ -64,7 +64,7 @@ const ProjectList: React.FC = () => {
               <BrutalistCard className="overflow-hidden group">
                 <div className="h-48 bg-brand-yellow border-b-2 border-black overflow-hidden relative">
                   <img
-                    src={item.image}
+                    src={resolveAssetUrl(item.image)}
                     alt={item.title}
                     className="w-full h-full object-cover transition-all duration-500"
                   />

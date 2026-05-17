@@ -1,15 +1,15 @@
-import { Request, Response, NextFunction } from "express";
+import type { Context, Next } from "hono";
 import jwt from "jsonwebtoken";
 
-export const authMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const token = req.headers.authorization?.split(" ")[1];
+export type AppVariables = {
+  adminId: string;
+};
+
+export const authMiddleware = async (c: Context<{ Variables: AppVariables }>, next: Next) => {
+  const token = c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
 
   if (!token) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return c.json({ message: "Unauthorized" }, 401);
   }
 
   try {
@@ -19,9 +19,9 @@ export const authMiddleware = (
     }
 
     const decoded = jwt.verify(token, jwtSecret);
-    (req as any).adminId = (decoded as any).id;
-    next();
+    c.set("adminId", (decoded as { id: string }).id);
+    await next();
   } catch (error) {
-    return res.status(401).json({ message: "Invalid token" });
+    return c.json({ message: "Invalid token" }, 401);
   }
 };

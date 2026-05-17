@@ -1,317 +1,177 @@
-import { Request, Response, NextFunction } from "express";
+import type { Context } from "hono";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/error.js";
 import { projectSchema } from "../utils/validation.js";
-import { supabase } from "../lib/supabase.js";
+import path from "path";
+import fs from "fs";
+import { saveUploadedImage, uploadDir } from "../lib/upload.js";
 
-/**
- * @openapi
- * /api/projects:
- *   get:
- *     tags:
- *       - Projects
- *     summary: Get all projects
- *     responses:
- *       200:
- *         description: Success
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Project'
- */
-export const getAllProjects = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const parseTechStack = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map(String);
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string) || "";
-    const category = (req.query.category as string) || "All";
-    const sortBy = (req.query.sortBy as string) || "Newest";
-    
-    const skip = (page - 1) * limit;
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : value;
+  } catch {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+};
 
-    // Build where clause
-    const where: any = {
-      OR: [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ],
+const isFile = (value: unknown): value is File => value instanceof File && value.size > 0;
+
+const normalizeProjectPayload = async (c: Context) => {
+  const contentType = c.req.header("Content-Type") || "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const body = await c.req.parseBody();
+    const imageValue = body.image;
+    const image = isFile(imageValue) ? await saveUploadedImage(imageValue) : imageValue;
+
+    return {
+      ...body,
+      image,
+      techStack: parseTechStack(body.techStack),
     };
-
-    if (category !== "All") {
-      where.category = category;
-    }
-
-    // Build orderBy
-    let orderBy: any = { createdAt: "desc" };
-    if (sortBy === "A-Z") orderBy = { title: "asc" };
-    else if (sortBy === "Z-A") orderBy = { title: "desc" };
-    else if (sortBy === "Oldest") orderBy = { createdAt: "asc" };
-
-    const [projects, total] = await Promise.all([
-      prisma.project.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-      }),
-      prisma.project.count({ where }),
-    ]);
-
-    res.json({
-      data: projects,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        hasNextPage: page * limit < total,
-      },
-    });
-  } catch (error) {
-    next(error);
   }
+
+  const body = await c.req.json();
+  return {
+    ...body,
+    techStack: parseTechStack(body.techStack),
+  };
 };
 
-/**
- * @openapi
- * /api/projects/{id}:
- *   get:
- *     tags:
- *       - Projects
- *     summary: Get project by ID
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Success
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Project'
- *       404:
- *         description: Project not found
- */
-export const getProjectById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const { id } = req.params;
-    if (typeof id !== "string") throw new AppError("Invalid ID", 400);
+export const getAllProjects = async (c: Context) => {
+  const page = parseInt(c.req.query("page") || "1", 10);
+  const limit = parseInt(c.req.query("limit") || "10", 10);
+  const search = c.req.query("search") || "";
+  const category = c.req.query("category") || "All";
+  const sortBy = c.req.query("sortBy") || "Newest";
+  const skip = (page - 1) * limit;
 
-    const project = await prisma.project.findUnique({
-      where: { id },
-    });
-    if (!project) throw new AppError("Project not found", 404);
-    res.json(project);
-  } catch (error) {
-    next(error);
+  const where: any = {};
+  if (search) {
+    where.OR = [
+      { title: { contains: search } },
+      { description: { contains: search } },
+    ];
   }
+
+  if (category !== "All") {
+    where.category = category;
+  }
+
+  let orderBy: any = { createdAt: "desc" };
+  if (sortBy === "A-Z") orderBy = { title: "asc" };
+  else if (sortBy === "Z-A") orderBy = { title: "desc" };
+  else if (sortBy === "Oldest") orderBy = { createdAt: "asc" };
+
+  const [projects, total] = await Promise.all([
+    prisma.project.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+    }),
+    prisma.project.count({ where }),
+  ]);
+
+  return c.json({
+    data: projects,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page * limit < total,
+    },
+  });
 };
 
-/**
- * @openapi
- * /api/projects:
- *   post:
- *     tags:
- *       - Projects
- *     summary: Create a new project (Admin Only)
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Project'
- *     responses:
- *       201:
- *         description: Created
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Project'
- *       401:
- *         description: Unauthorized
- */
-export const createProject = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const validatedData = projectSchema.parse(req.body);
-    const project = await prisma.project.create({
-      data: validatedData,
-    });
-    res.status(201).json(project);
-  } catch (error) {
-    next(error);
-  }
+export const getProjectById = async (c: Context) => {
+  const id = c.req.param("id");
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+  });
+  if (!project) throw new AppError("Project not found", 404);
+
+  return c.json(project);
 };
 
-/**
- * @openapi
- * /api/projects/{id}:
- *   put:
- *     tags:
- *       - Projects
- *     summary: Update a project (Admin Only)
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Project'
- *     responses:
- *       200:
- *         description: Updated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Project'
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Project not found
- */
-export const updateProject = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const { id } = req.params;
-    if (typeof id !== "string") throw new AppError("Invalid ID", 400);
+export const createProject = async (c: Context) => {
+  const payload = await normalizeProjectPayload(c);
+  const validatedData = projectSchema.parse(payload);
+  if (!validatedData.image) throw new AppError("Image is required", 400);
 
-    const validatedData = projectSchema.parse(req.body);
+  const project = await prisma.project.create({
+    data: {
+      ...validatedData,
+      image: validatedData.image,
+    },
+  });
 
-    // 1. If a new image is provided, find the old project to delete the old image
-    if (validatedData.image) {
-      const oldProject = await prisma.project.findUnique({
-        where: { id },
-      });
+  return c.json(project, 201);
+};
 
-      if (oldProject && oldProject.image && oldProject.image !== validatedData.image) {
-        try {
-          const bucketName = "projects";
-          const urlParts = oldProject.image.split(`/${bucketName}/`);
-          if (urlParts.length > 1) {
-            const oldFilePath = urlParts[urlParts.length - 1];
-            console.log(`[storage]: Deleting old file during update: ${oldFilePath}`);
-            await supabase.storage.from(bucketName).remove([oldFilePath]);
-          }
-        } catch (err) {
-          console.error(`[storage]: Error deleting old file during update:`, err);
-        }
+export const updateProject = async (c: Context) => {
+  const id = c.req.param("id");
+  const payload = await normalizeProjectPayload(c);
+  const validatedData = projectSchema.parse(payload);
+  const oldProject = await prisma.project.findUnique({
+    where: { id },
+  });
+
+  if (!oldProject) throw new AppError("Project not found", 404);
+
+  if (validatedData.image !== oldProject.image && oldProject.image) {
+    try {
+      const oldFilePath = path.join(uploadDir, path.basename(oldProject.image));
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
       }
+    } catch (err) {
+      console.error(`[storage]: Error deleting old file during update:`, err);
     }
-
-    // 2. Update the project record
-    const project = await prisma.project.update({
-      where: { id },
-      data: validatedData,
-    });
-    res.json(project);
-  } catch (error) {
-    next(error);
   }
+
+  const project = await prisma.project.update({
+    where: { id },
+    data: validatedData,
+  });
+
+  return c.json(project);
 };
 
-/**
- * @openapi
- * /api/projects/{id}:
- *   delete:
- *     tags:
- *       - Projects
- *     summary: Delete a project (Admin Only)
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Deleted successfully
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Project not found
- */
-export const deleteProject = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const { id } = req.params;
-    if (typeof id !== "string") throw new AppError("Invalid ID", 400);
+export const deleteProject = async (c: Context) => {
+  const id = c.req.param("id");
 
-    // 1. Find project to get the image URL
-    const project = await prisma.project.findUnique({
-      where: { id },
-    });
+  const project = await prisma.project.findUnique({
+    where: { id },
+  });
 
-    if (!project) throw new AppError("Project not found", 404);
+  if (!project) throw new AppError("Project not found", 404);
 
-    // 2. If project has an image, delete it from Supabase Storage
-    if (project.image) {
-      try {
-        // Extract file path from URL
-        // Expected URL: https://.../storage/v1/object/public/[bucket-name]/[file-path]
-        // We need everything after /[bucket-name]/
-        const bucketName = "projects";
-        const urlParts = project.image.split(`/${bucketName}/`);
-        
-        if (urlParts.length > 1) {
-          const filePath = urlParts[urlParts.length - 1];
-          console.log(`[storage]: Attempting to delete file: ${filePath}`);
-          
-          const { error: storageError } = await supabase.storage
-            .from(bucketName)
-            .remove([filePath]);
-
-          if (storageError) {
-            console.error(`[storage]: Error deleting file: ${storageError.message}`);
-            // We continue anyway to ensure the DB record is deleted
-          } else {
-            console.log(`[storage]: File deleted successfully`);
-          }
-        }
-      } catch (err) {
-        console.error(`[storage]: Unexpected error during file deletion:`, err);
+  if (project.image) {
+    try {
+      const filePath = path.join(uploadDir, path.basename(project.image));
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
       }
+    } catch (err) {
+      console.error(`[storage]: Error deleting file:`, err);
     }
-
-    // 3. Delete project from database
-    await prisma.project.delete({
-      where: { id },
-    });
-
-    res.json({ message: "Project and associated assets deleted successfully" });
-  } catch (error) {
-    next(error);
   }
+
+  await prisma.project.delete({
+    where: { id },
+  });
+
+  return c.json({ message: "Project and associated assets deleted successfully" });
 };

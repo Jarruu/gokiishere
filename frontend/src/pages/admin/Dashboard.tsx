@@ -7,7 +7,7 @@ import { BrutalistCard } from '../../components/ui/BrutalistCard';
 import { toast } from 'sonner';
 import { useAuth } from '../../lib/auth';
 import { Dropdown } from '../../components/ui/Dropdown';
-import { getProjects, deleteProject, invalidateCache } from '../../lib/api';
+import { getProjects, deleteProject, invalidateCache, resolveAssetUrl } from '../../lib/api';
 import { DashboardSkeleton, DashboardItemSkeleton } from '../../components/skeletons/DashboardSkeleton';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -158,7 +158,7 @@ const DashboardContent: React.FC<{
             <BrutalistCard className="p-6 bg-brand-yellow flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-6 w-full">
                 <div className="w-24 h-24 border-2 border-black overflow-hidden shrink-0">
-                  <img src={project.image} alt="" className="w-full h-full object-cover" />
+                  <img src={resolveAssetUrl(project.image)} alt="" className="w-full h-full object-cover" />
                 </div>
                 <div className="overflow-hidden">
                   <div className="flex items-center gap-2 mb-1">

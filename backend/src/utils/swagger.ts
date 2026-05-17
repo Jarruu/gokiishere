@@ -1,6 +1,6 @@
-import { Express, Request, Response } from "express";
+import type { Hono } from "hono";
 import swaggerJsdoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
+import { swaggerUI } from "@hono/swagger-ui";
 import pkg from "../../package.json" with { type: "json" };
 
 const { version } = pkg;
@@ -90,17 +90,12 @@ const options: swaggerJsdoc.Options = {
 
 const swaggerSpec = swaggerJsdoc(options);
 
-function swaggerDocs(app: Express, port: number | string) {
-  // Swagger Page
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+function swaggerDocs(app: Hono, port: number | string) {
+  app.get("/api-docs", swaggerUI({ url: "/api-docs.json" }));
 
-  // Docs in JSON format
-  app.get("/api-docs.json", (req: Request, res: Response) => {
-    res.setHeader("Content-Type", "application/json");
-    res.send(swaggerSpec);
+  app.get("/api-docs.json", (c) => {
+    return c.json(swaggerSpec);
   });
-
-  console.log(`[swagger]: Docs available at http://localhost:${port}/api-docs`);
 }
 
 export default swaggerDocs;

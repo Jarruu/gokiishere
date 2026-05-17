@@ -7,13 +7,54 @@ const getBaseUrl = () => {
 };
 
 const BASE_URL = getBaseUrl();
+const API_ORIGIN = new URL(BASE_URL).origin;
 
 const cache = new Map<string, Promise<any>>();
+
+const emptyProjectsResponse = {
+  data: [],
+  meta: {
+    total: 0,
+    page: 1,
+    limit: 0,
+    totalPages: 0,
+    hasNextPage: false,
+  },
+};
+
+const fetchJson = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || `Request failed with status ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export function resolveAssetUrl(path: string) {
+  if (!path || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:') || path.startsWith('data:')) {
+    return path;
+  }
+
+  return `${API_ORIGIN}${path.startsWith('/') ? path : `/${path}`}`;
+}
 
 export function getProjects(page = 1, limit = 10, search = "", category = "All", sortBy = "Newest") {
   const url = `${BASE_URL}/projects?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&category=${category}&sortBy=${sortBy}`;
   if (!cache.has(url)) {
-    cache.set(url, fetch(url).then(res => res.json()));
+    cache.set(url, fetchJson(url).catch((error) => {
+      cache.delete(url);
+      console.error(`Backend API is unavailable at ${BASE_URL}.`, error);
+      return {
+        ...emptyProjectsResponse,
+        meta: {
+          ...emptyProjectsResponse.meta,
+          page,
+          limit,
+        },
+      };
+    }));
   }
   return cache.get(url)!;
 }
@@ -21,19 +62,24 @@ export function getProjects(page = 1, limit = 10, search = "", category = "All",
 export function getProject(id: string) {
   const url = `${BASE_URL}/projects/${id}`;
   if (!cache.has(url)) {
-    cache.set(url, fetch(url).then(res => res.json()));
+    cache.set(url, fetchJson(url).catch((error) => {
+      cache.delete(url);
+      console.error(`Backend API is unavailable at ${BASE_URL}.`, error);
+      return null;
+    }));
   }
   return cache.get(url)!;
 }
 
 export async function createProject(payload: any) {
+  const isFormData = payload instanceof FormData;
   const response = await fetch(`${BASE_URL}/projects`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+      'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' })
     },
-    body: JSON.stringify(payload),
+    body: isFormData ? payload : JSON.stringify(payload),
   });
   if (!response.ok) {
     const data = await response.json();
@@ -44,13 +90,14 @@ export async function createProject(payload: any) {
 }
 
 export async function updateProject(id: string, payload: any) {
+  const isFormData = payload instanceof FormData;
   const response = await fetch(`${BASE_URL}/projects/${id}`, {
     method: 'PUT',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+      'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' })
     },
-    body: JSON.stringify(payload),
+    body: isFormData ? payload : JSON.stringify(payload),
   });
   if (!response.ok) {
     const data = await response.json();

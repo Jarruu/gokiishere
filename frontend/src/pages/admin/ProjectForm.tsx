@@ -8,9 +8,8 @@ import { useAuth } from '../../lib/auth';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Dropdown } from '../../components/ui/Dropdown';
-import { createProject, updateProject, invalidateCache } from '../../lib/api';
+import { createProject, updateProject, invalidateCache, resolveAssetUrl } from '../../lib/api';
 import { cn } from '../../lib/utils';
-import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 
 const ProjectForm: React.FC = () => {
@@ -18,7 +17,6 @@ const ProjectForm: React.FC = () => {
   const isEdit = !!id;
   const navigate = useNavigate();
   const [isFetching, setIsFetching] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const { token } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -32,6 +30,7 @@ const ProjectForm: React.FC = () => {
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -48,7 +47,7 @@ const ProjectForm: React.FC = () => {
   // Update preview when formData.image changes (e.g. from fetchProject)
   useEffect(() => {
     if (formData.image) {
-      setImagePreview(formData.image);
+      setImagePreview(resolveAssetUrl(formData.image));
     }
   }, [formData.image]);
 
@@ -79,68 +78,52 @@ const ProjectForm: React.FC = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
-      if (!supabase) {
-        throw new Error('Supabase is not configured. Please check your .env file.');
-      }
-      
       if (!e.target.files || e.target.files.length === 0) {
         return;
       }
 
       const file = e.target.files[0];
+      setSelectedImageFile(file);
       
       // Show local preview immediately
       const localUrl = URL.createObjectURL(file);
       setImagePreview(localUrl);
-      setUploading(true);
-      const uploadToastId = toast.loading('UPLOADING ASSETS...');
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `project-images/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('projects')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage
-        .from('projects')
-        .getPublicUrl(filePath);
-
-      setFormData({ ...formData, image: data.publicUrl });
-      setImagePreview(data.publicUrl);
-      toast.success('IMAGE UPLOADED SUCCESSFULLY', { id: uploadToastId });
+      toast.success('IMAGE READY TO UPLOAD');
     } catch (error: any) {
       toast.error(`UPLOAD FAILED: ${error.message}`);
-      setImagePreview(formData.image || null);
-    } finally {
-      setUploading(false);
+      setImagePreview(formData.image ? resolveAssetUrl(formData.image) : null);
     }
   };
 
   const handleRemoveImage = () => {
     setFormData({ ...formData, image: '' });
+    setSelectedImageFile(null);
     setImagePreview(null);
     toast.info('IMAGE REMOVED FROM FORM');
   };
 
   // React 19 useActionState for form submission
   const [state, formAction, isPending] = useActionState(async (prevState: any, formDataObj: FormData) => {
-    if (!formData.image) {
+    if (!selectedImageFile && !formData.image) {
       toast.error('PLEASE UPLOAD AN IMAGE FIRST');
       return { error: 'Missing image' };
     }
 
     const processToastId = toast.loading(isEdit ? 'UPDATING PROJECT...' : 'PUBLISHING PROJECT...');
 
-    const payload = {
-      ...formData,
-      techStack: formData.techStack.split(',').map(s => s.trim()).filter(s => s !== '')
-    };
+    const payload = new FormData();
+    payload.append('title', formData.title);
+    payload.append('category', formData.category);
+    payload.append('description', formData.description);
+    payload.append('fullContent', formData.fullContent);
+    payload.append('completedIn', formData.completedIn);
+    payload.append('techStack', JSON.stringify(formData.techStack.split(',').map(s => s.trim()).filter(s => s !== '')));
+
+    if (selectedImageFile) {
+      payload.append('image', selectedImageFile);
+    } else {
+      payload.append('image', formData.image);
+    }
 
     try {
       if (isEdit) {
@@ -234,7 +217,7 @@ const ProjectForm: React.FC = () => {
                 "relative border-2 border-black p-4 bg-brand-red/5 flex flex-col items-center justify-center min-h-[250px] transition-all hover:bg-brand-red/10 overflow-hidden",
                 imagePreview && 'border-dashed'
               )}>
-                {imagePreview && !uploading && (
+                {imagePreview && !isPending && (
                   <div className="absolute inset-0 w-full h-full z-0">
                     <img src={imagePreview} alt="Background Preview" className="w-full h-full object-cover opacity-20 blur-[2px]" />
                   </div>
@@ -245,12 +228,12 @@ const ProjectForm: React.FC = () => {
                     <div className="flex flex-col items-center gap-4 w-full max-w-md">
                       <div className="relative w-full aspect-video border-2 border-black overflow-hidden bg-brand-yellow shadow-[8px_8px_0px_0px_var(--color-brand-red)]">
                         <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                        {uploading && (
+                        {isPending && (
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-sm">
                             <Loader2 className="animate-spin text-brand-yellow" size={32} />
                           </div>
                         )}
-                        {!uploading && (
+                        {!isPending && (
                           <button 
                             type="button"
                             onClick={handleRemoveImage}
@@ -262,7 +245,7 @@ const ProjectForm: React.FC = () => {
                         )}
                       </div>
                       
-                      {!uploading && (
+                      {!isPending && (
                         <div className="relative group">
                           <input
                             type="file"
@@ -282,10 +265,10 @@ const ProjectForm: React.FC = () => {
                         type="file"
                         accept="image/*"
                         onChange={handleFileUpload}
-                        disabled={uploading}
+                        disabled={isPending}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       />
-                      {uploading ? (
+                      {isPending ? (
                         <div className="flex flex-col items-center gap-2">
                           <Loader2 className="animate-spin text-brand-red" size={48} />
                           <span className="font-bold uppercase text-sm">Uploading Technical Assets...</span>
@@ -368,7 +351,7 @@ const ProjectForm: React.FC = () => {
                 type="submit"
                 variant="primary"
                 className="w-full py-6 text-xl"
-                disabled={isPending || uploading}
+                disabled={isPending}
               >
                 {isPending ? 'Processing...' : (isEdit ? 'UPDATE PROJECT' : 'PUBLISH PROJECT')}
               </Button>

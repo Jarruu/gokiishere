@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { ArrowLeft, Cpu } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { PortfolioItem } from "../types";
-import { getProject } from "../lib/api";
+import { getProject, resolveAssetUrl } from "../lib/api";
 import { cn } from "../lib/utils";
 
 import { ProjectDetailSkeleton } from "../components/skeletons/ProjectDetailSkeleton";
@@ -78,7 +78,7 @@ const ProjectDetailView: React.FC<{ id: string }> = ({ id }) => {
           className="border-4 border-black shadow-[12px_12px_0px_0px_var(--color-brand-red)] overflow-hidden bg-white max-w-5xl w-full"
         >
           <img
-            src={project.image}
+            src={resolveAssetUrl(project.image)}
             alt={project.title}
             className="w-full h-auto object-cover transition-transform duration-700 hover:scale-[1.01]"
           />

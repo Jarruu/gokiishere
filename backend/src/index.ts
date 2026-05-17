@@ -1,36 +1,40 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import express from "express";
-import cors from "cors";
+import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
 import { errorHandler } from "./middleware/error.js";
 import swaggerDocs from "./utils/swagger.js";
 
-const app = express();
+const app = new Hono();
 const port = process.env.PORT;
 if (!port) {
   throw new Error("PORT is not defined in environment variables.");
 }
+const baseUrl = `http://localhost:${port}`;
 
-app.use(cors());
-app.use(express.json());
+app.use("*", cors());
+app.use("/uploads/*", serveStatic({ root: "./" }));
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/projects", projectRoutes);
+app.route("/api/auth", authRoutes);
+app.route("/api/projects", projectRoutes);
 
-// Swagger Docs
 swaggerDocs(app, port);
 
-// Global Error Handler
-app.use(errorHandler);
-
-app.get("/", (req, res) => {
-  res.json({ message: "Gokiishere API is running!" });
+app.get("/", (c) => {
+  return c.json({ message: "Gokiishere API is running!" });
 });
 
-app.listen(port, () => {
-  console.log(`[server]: Server is running at http://localhost:${port}`);
+app.onError(errorHandler);
+
+serve({
+  fetch: app.fetch,
+  port: Number(port),
+}, () => {
+  console.log(`[server]: Server berjalan di ${baseUrl}`);
+  console.log(`[swagger]: Docs tersedia di ${baseUrl}/api-docs`);
 });
