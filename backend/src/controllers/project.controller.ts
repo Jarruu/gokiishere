@@ -17,11 +17,15 @@ const parseTechStack = (value: unknown) => {
     const parsed = JSON.parse(value);
     return Array.isArray(parsed) ? parsed : value;
   } catch {
-    return value.split(",").map((item) => item.trim()).filter(Boolean);
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 };
 
-const isFile = (value: unknown): value is File => value instanceof File && value.size > 0;
+const isFile = (value: unknown): value is File =>
+  value instanceof File && value.size > 0;
 
 const normalizeProjectPayload = async (c: Context) => {
   const contentType = c.req.header("Content-Type") || "";
@@ -29,7 +33,9 @@ const normalizeProjectPayload = async (c: Context) => {
   if (contentType.includes("multipart/form-data")) {
     const body = await c.req.parseBody();
     const imageValue = body.image;
-    const image = isFile(imageValue) ? await saveUploadedImage(imageValue) : imageValue;
+    const image = isFile(imageValue)
+      ? await saveUploadedImage(imageValue)
+      : imageValue;
 
     return {
       ...body,
@@ -45,6 +51,59 @@ const normalizeProjectPayload = async (c: Context) => {
   };
 };
 
+/**
+ * @openapi
+ * /api/projects:
+ *   get:
+ *     tags:
+ *       - Projects
+ *     summary: Get all projects with pagination and filtering
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           default: All
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: Newest
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Project'
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     page: { type: integer }
+ *                     limit: { type: integer }
+ *                     totalPages: { type: integer }
+ *                     hasNextPage: { type: boolean }
+ */
 export const getAllProjects = async (c: Context) => {
   const page = parseInt(c.req.query("page") || "1", 10);
   const limit = parseInt(c.req.query("limit") || "10", 10);
@@ -56,8 +115,8 @@ export const getAllProjects = async (c: Context) => {
   const where: any = {};
   if (search) {
     where.OR = [
-      { title: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } },
+      { title: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
     ];
   }
 
@@ -92,6 +151,29 @@ export const getAllProjects = async (c: Context) => {
   });
 };
 
+/**
+ * @openapi
+ * /api/projects/{id}:
+ *   get:
+ *     tags:
+ *       - Projects
+ *     summary: Get project by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Project'
+ *       404:
+ *         description: Project not found
+ */
 export const getProjectById = async (c: Context) => {
   const id = c.req.param("id");
 
@@ -103,6 +185,37 @@ export const getProjectById = async (c: Context) => {
   return c.json(project);
 };
 
+/**
+ * @openapi
+ * /api/projects:
+ *   post:
+ *     tags:
+ *       - Projects
+ *     summary: Create a new project
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               category: { type: string }
+ *               image: { type: string, format: binary }
+ *               description: { type: string }
+ *               fullContent: { type: string }
+ *               techStack: { type: string, description: "JSON string or comma separated" }
+ *               completedIn: { type: string }
+ *     responses:
+ *       201:
+ *         description: Created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Project'
+ */
 export const createProject = async (c: Context) => {
   const payload = await normalizeProjectPayload(c);
   const validatedData = projectSchema.parse(payload);
@@ -118,6 +231,43 @@ export const createProject = async (c: Context) => {
   return c.json(project, 201);
 };
 
+/**
+ * @openapi
+ * /api/projects/{id}:
+ *   put:
+ *     tags:
+ *       - Projects
+ *     summary: Update an existing project
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               category: { type: string }
+ *               image: { type: string, format: binary }
+ *               description: { type: string }
+ *               fullContent: { type: string }
+ *               techStack: { type: string }
+ *               completedIn: { type: string }
+ *     responses:
+ *       200:
+ *         description: Updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Project'
+ */
 export const updateProject = async (c: Context) => {
   const id = c.req.param("id");
   const payload = await normalizeProjectPayload(c);
@@ -140,6 +290,25 @@ export const updateProject = async (c: Context) => {
   return c.json(project);
 };
 
+/**
+ * @openapi
+ * /api/projects/{id}:
+ *   delete:
+ *     tags:
+ *       - Projects
+ *     summary: Delete a project
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Deleted
+ */
 export const deleteProject = async (c: Context) => {
   const id = c.req.param("id");
 
@@ -157,5 +326,7 @@ export const deleteProject = async (c: Context) => {
     where: { id },
   });
 
-  return c.json({ message: "Project and associated assets deleted successfully" });
+  return c.json({
+    message: "Project and associated assets deleted successfully",
+  });
 };

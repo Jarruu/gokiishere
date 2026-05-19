@@ -11,6 +11,8 @@ import { errorHandler } from "./middleware/error.js";
 import swaggerDocs from "./utils/swagger.js";
 
 const app = new Hono();
+export default app;
+
 const port = process.env.PORT;
 if (!port) {
   throw new Error("PORT is not defined in environment variables.");
@@ -31,10 +33,15 @@ app.get("/", (c) => {
 
 app.onError(errorHandler);
 
-serve({
-  fetch: app.fetch,
-  port: Number(port),
-}, () => {
-  console.log(`[server]: Server berjalan di ${baseUrl}`);
-  console.log(`[swagger]: Docs tersedia di ${baseUrl}/api-docs`);
-});
+if (process.env.NODE_ENV !== "test") {
+  serve(
+    {
+      fetch: app.fetch,
+      port: Number(port),
+    },
+    () => {
+      console.log(`[server]: Server berjalan di ${baseUrl}`);
+      console.log(`[swagger]: Docs tersedia di ${baseUrl}/api-docs`);
+    },
+  );
+}

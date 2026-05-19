@@ -6,13 +6,15 @@ dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const bucketName = process.env.SUPABASE_BUCKET || "project-images";
+const bucketName = process.env.SUPABASE_BUCKET;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error("[supabase]: SUPABASE_URL or SUPABASE_ANON_KEY is missing");
+if (!supabaseUrl || !supabaseKey || !bucketName) {
+  throw new Error(
+    "SUPABASE_URL, SUPABASE_ANON_KEY, or SUPABASE_BUCKET is missing in environment variables.",
+  );
 }
 
-export const supabase = createClient(supabaseUrl || "", supabaseKey || "");
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 const allowedMimeTypes = new Set([
   "image/jpeg",

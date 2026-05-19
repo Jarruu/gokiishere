@@ -32,7 +32,7 @@ const options: swaggerJsdoc.Options = {
         description: "Production/Relative",
       },
       {
-        url: `http://localhost:${process.env.PORT || 3000}/api`,
+        url: `http://localhost:${process.env.PORT}/api`,
         description: "Local Development",
       },
     ],
@@ -123,7 +123,12 @@ const options: swaggerJsdoc.Options = {
       },
     ],
   },
-  apis: ["./src/controllers/*.ts", "./src/routes/*.ts"],
+  apis: [
+    path.join(__dirname, "../controllers/*.ts"),
+    path.join(__dirname, "../controllers/*.js"),
+    path.join(__dirname, "../routes/*.ts"),
+    path.join(__dirname, "../routes/*.js"),
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
