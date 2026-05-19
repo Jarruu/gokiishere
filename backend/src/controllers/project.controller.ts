@@ -2,9 +2,7 @@ import type { Context } from "hono";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/error.js";
 import { projectSchema } from "../utils/validation.js";
-import path from "path";
-import fs from "fs";
-import { saveUploadedImage, uploadDir } from "../lib/upload.js";
+import { saveUploadedImage, deleteImageFromStorage } from "../lib/upload.js";
 
 const parseTechStack = (value: unknown) => {
   if (Array.isArray(value)) {
@@ -58,8 +56,8 @@ export const getAllProjects = async (c: Context) => {
   const where: any = {};
   if (search) {
     where.OR = [
-      { title: { contains: search } },
-      { description: { contains: search } },
+      { title: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
     ];
   }
 
@@ -131,14 +129,7 @@ export const updateProject = async (c: Context) => {
   if (!oldProject) throw new AppError("Project not found", 404);
 
   if (validatedData.image !== oldProject.image && oldProject.image) {
-    try {
-      const oldFilePath = path.join(uploadDir, path.basename(oldProject.image));
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlinkSync(oldFilePath);
-      }
-    } catch (err) {
-      console.error(`[storage]: Error deleting old file during update:`, err);
-    }
+    await deleteImageFromStorage(oldProject.image);
   }
 
   const project = await prisma.project.update({
@@ -159,14 +150,7 @@ export const deleteProject = async (c: Context) => {
   if (!project) throw new AppError("Project not found", 404);
 
   if (project.image) {
-    try {
-      const filePath = path.join(uploadDir, path.basename(project.image));
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    } catch (err) {
-      console.error(`[storage]: Error deleting file:`, err);
-    }
+    await deleteImageFromStorage(project.image);
   }
 
   await prisma.project.delete({

@@ -1,8 +1,16 @@
 import type { Hono } from "hono";
 import swaggerJsdoc from "swagger-jsdoc";
 import { swaggerUI } from "@hono/swagger-ui";
-import pkg from "../../package.json" with { type: "json" };
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Membaca version dari package.json secara manual karena import json with type bisa bermasalah di beberapa environment
+const packageJsonPath = path.resolve(__dirname, "../../package.json");
+const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 const { version } = pkg;
 
 const options: swaggerJsdoc.Options = {
@@ -11,12 +19,22 @@ const options: swaggerJsdoc.Options = {
     info: {
       title: "Gokiishere API Documentation",
       version,
-      description: "API documentation for Gokiishere portfolio and project management system",
+      description: "API documentation for Gokiishere portfolio and project management system. \n\n### Catatan Deployment\nBackend ini menggunakan Supabase Storage untuk penyimpanan gambar dan PostgreSQL untuk database.",
       contact: {
         name: "Jaeyi",
         email: "support@gokiishere.com",
       },
     },
+    servers: [
+      {
+        url: "/api",
+        description: "Vercel Deployment (Default)",
+      },
+      {
+        url: "http://localhost:3000/api",
+        description: "Local Development",
+      }
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -36,8 +54,11 @@ const options: swaggerJsdoc.Options = {
               type: "string",
               enum: ['WEB', 'APP', 'MACHINE_LEARNING', 'VERILOG_FSM', 'ARDUINO_IOT', 'ALGORITHM_FLOWCHART', 'OTHERS'],
             },
-
-            image: { type: "string", format: "uri" },
+            image: { 
+              type: "string", 
+              format: "uri",
+              description: "Public URL dari Supabase Storage"
+            },
             description: { type: "string", minLength: 10 },
             fullContent: { type: "string", minLength: 20 },
             techStack: {
@@ -90,9 +111,11 @@ const options: swaggerJsdoc.Options = {
 
 const swaggerSpec = swaggerJsdoc(options);
 
-function swaggerDocs(app: Hono, port: number | string) {
+function swaggerDocs(app: Hono, _port: number | string) {
+  // Setup Swagger UI di root path documentation
   app.get("/api-docs", swaggerUI({ url: "/api-docs.json" }));
 
+  // Endpoint untuk JSON spec
   app.get("/api-docs.json", (c) => {
     return c.json(swaggerSpec);
   });
