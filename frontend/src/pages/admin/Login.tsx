@@ -1,20 +1,24 @@
-import React, { useActionState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { Lock, User, AlertCircle } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
-import { BrutalistCard } from '../../components/ui/BrutalistCard';
-import { Input } from '../../components/ui/Input';
-import { useAuth } from '../../lib/auth';
+import React, { useActionState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { motion } from "motion/react";
+import { Lock, User, AlertCircle } from "lucide-react";
+import { Button } from "../../components/ui/Button";
+import { BrutalistCard } from "../../components/ui/BrutalistCard";
+import { Input } from "../../components/ui/Input";
+import { useAuth } from "../../lib/auth";
+import { login as loginApi } from "../../lib/api";
 
-const MarqueeRow: React.FC<{ reverse?: boolean; duration?: number }> = ({ 
-  reverse = false, 
-  duration = 20 
+const MarqueeRow: React.FC<{ reverse?: boolean; duration?: number }> = ({
+  reverse = false,
+  duration = 20,
 }) => {
   const content = (
     <div className="flex shrink-0">
       {[...Array(4)].map((_, i) => (
-        <span key={i} className="text-[6vw] font-black tracking-tighter uppercase px-8 flex items-center whitespace-nowrap">
+        <span
+          key={i}
+          className="text-[6vw] font-black tracking-tighter uppercase px-8 flex items-center whitespace-nowrap"
+        >
           <span className="text-black/15">GOKI</span>
           <span className="text-brand-red/25">IS</span>
           <span className="text-black/15">HERE</span>
@@ -49,46 +53,39 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin/dashboard');
+      navigate("/admin/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
-  const [state, formAction, isPending] = useActionState(async (prevState: any, formData: FormData) => {
-    const username = formData.get('username') as string;
-    const password = formData.get('password') as string;
+  const [state, formAction, isPending] = useActionState(
+    async (prevState: any, formData: FormData) => {
+      const username = formData.get("username") as string;
+      const password = formData.get("password") as string;
 
-    try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { error: data.message || 'Login failed' };
+      try {
+        const data = await loginApi({ username, password });
+        login(data.data.token, data.data.username);
+        return { success: true };
+      } catch (err: any) {
+        return {
+          error:
+            err.message || "Server lagi pusing. Pastikan backend jalan ya!",
+        };
       }
-
-      login(data.data.token, data.data.username);
-      return { success: true };
-    } catch (err: any) {
-      return { error: 'Server lagi pusing. Pastikan backend jalan ya!' };
-    }
-  }, null);
+    },
+    null,
+  );
 
   return (
     <div className="min-h-[calc(100vh-180px)] flex items-center justify-center p-6 relative bg-brand-yellow isolate overflow-hidden">
       {/* Background Container - Improved coverage and infinite marquee */}
       <div className="absolute inset-0 -z-10 pointer-events-none bg-brand-yellow">
-        <div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vh] rotate-[-12deg] flex flex-col justify-center"
-        >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vh] rotate-[-12deg] flex flex-col justify-center">
           {[...Array(15)].map((_, i) => (
-            <MarqueeRow 
-              key={i} 
-              reverse={i % 2 === 0} 
-              duration={30 + (i % 5) * 5} 
+            <MarqueeRow
+              key={i}
+              reverse={i % 2 === 0}
+              duration={30 + (i % 5) * 5}
             />
           ))}
         </div>
@@ -101,18 +98,20 @@ const Login: React.FC = () => {
       >
         <BrutalistCard className="p-8 bg-white">
           <div className="mb-8 text-center">
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-block mb-4 text-5xl font-black tracking-tighter uppercase hover:scale-105 transition-transform active:scale-95"
             >
               Goki<span className="text-brand-red">is</span>here
             </Link>
-            <h1 className="text-3xl font-black uppercase tracking-tighter">Ruang Etmin</h1>
+            <h1 className="text-3xl font-black uppercase tracking-tighter">
+              Ruang Etmin
+            </h1>
             <p className="font-bold opacity-60">Yang etmin etmin aja</p>
           </div>
 
           <form action={formAction} className="space-y-6">
-            <Input 
+            <Input
               label="Username"
               name="username"
               type="text"
@@ -121,7 +120,7 @@ const Login: React.FC = () => {
               required
             />
 
-            <Input 
+            <Input
               label="Password"
               name="password"
               type="password"
@@ -142,7 +141,7 @@ const Login: React.FC = () => {
               className="w-full py-4 text-lg"
               disabled={isPending}
             >
-              {isPending ? 'tunggu bental' : 'macuk'}
+              {isPending ? "tunggu bental" : "macuk"}
             </Button>
           </form>
         </BrutalistCard>

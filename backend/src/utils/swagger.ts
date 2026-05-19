@@ -19,7 +19,8 @@ const options: swaggerJsdoc.Options = {
     info: {
       title: "Gokiishere API Documentation",
       version,
-      description: "API documentation for Gokiishere portfolio and project management system. \n\n### Catatan Deployment\nBackend ini menggunakan Supabase Storage untuk penyimpanan gambar dan PostgreSQL untuk database.",
+      description:
+        "API documentation for Gokiishere portfolio and project management system. \n\n### Catatan Deployment\nBackend ini menggunakan Supabase Storage untuk penyimpanan gambar dan PostgreSQL untuk database.",
       contact: {
         name: "Jaeyi",
         email: "support@gokiishere.com",
@@ -28,12 +29,12 @@ const options: swaggerJsdoc.Options = {
     servers: [
       {
         url: "/api",
-        description: "Vercel Deployment (Default)",
+        description: "Production/Relative",
       },
       {
-        url: "http://localhost:3000/api",
+        url: `http://localhost:${process.env.PORT || 3000}/api`,
         description: "Local Development",
-      }
+      },
     ],
     components: {
       securitySchemes: {
@@ -46,18 +47,34 @@ const options: swaggerJsdoc.Options = {
       schemas: {
         Project: {
           type: "object",
-          required: ["title", "category", "image", "description", "fullContent", "techStack", "completedIn"],
+          required: [
+            "title",
+            "category",
+            "image",
+            "description",
+            "fullContent",
+            "techStack",
+            "completedIn",
+          ],
           properties: {
             id: { type: "string", format: "uuid" },
             title: { type: "string", minLength: 3 },
             category: {
               type: "string",
-              enum: ['WEB', 'APP', 'MACHINE_LEARNING', 'VERILOG_FSM', 'ARDUINO_IOT', 'ALGORITHM_FLOWCHART', 'OTHERS'],
+              enum: [
+                "WEB",
+                "APP",
+                "MACHINE_LEARNING",
+                "VERILOG_FSM",
+                "ARDUINO_IOT",
+                "ALGORITHM_FLOWCHART",
+                "OTHERS",
+              ],
             },
-            image: { 
-              type: "string", 
+            image: {
+              type: "string",
               format: "uri",
-              description: "Public URL dari Supabase Storage"
+              description: "Public URL dari Supabase Storage",
             },
             description: { type: "string", minLength: 10 },
             fullContent: { type: "string", minLength: 20 },

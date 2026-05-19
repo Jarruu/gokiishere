@@ -6,7 +6,7 @@ dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const bucketName = "project-images"; // Pastikan bucket ini sudah dibuat di Supabase Dashboard
+const bucketName = process.env.SUPABASE_BUCKET || "project-images";
 
 if (!supabaseUrl || !supabaseKey) {
   console.error("[supabase]: SUPABASE_URL or SUPABASE_ANON_KEY is missing");
@@ -14,12 +14,20 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl || "", supabaseKey || "");
 
-const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const allowedMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
 const maxFileSize = 5 * 1024 * 1024; // 5MB
 
 export const saveUploadedImage = async (file: File) => {
   if (!allowedMimeTypes.has(file.type)) {
-    throw new AppError("Only image files (jpeg, jpg, png, gif, webp) are allowed", 400);
+    throw new AppError(
+      "Only image files (jpeg, jpg, png, gif, webp) are allowed",
+      400,
+    );
   }
 
   if (file.size > maxFileSize) {
@@ -29,7 +37,7 @@ export const saveUploadedImage = async (file: File) => {
   const extension = file.name.split(".").pop();
   const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
   const filename = `${uniqueSuffix}.${extension}`;
-  
+
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
@@ -37,7 +45,7 @@ export const saveUploadedImage = async (file: File) => {
     .from(bucketName)
     .upload(filename, buffer, {
       contentType: file.type,
-      upsert: false
+      upsert: false,
     });
 
   if (error) {
@@ -45,9 +53,9 @@ export const saveUploadedImage = async (file: File) => {
     throw new AppError(`Failed to upload image: ${error.message}`, 500);
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucketName)
-    .getPublicUrl(filename);
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(bucketName).getPublicUrl(filename);
 
   return publicUrl;
 };
