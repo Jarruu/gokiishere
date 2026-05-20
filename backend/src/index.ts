@@ -13,10 +13,10 @@ import swaggerDocs from "./utils/swagger.js";
 const app = new Hono();
 export default app;
 
-const port = process.env.PORT;
+const port = process.env.PORT || "3000";
 const isVercel = process.env.VERCEL === "1";
 
-if (!port && !isVercel) {
+if (!process.env.PORT && !isVercel) {
   throw new Error("PORT is not defined in environment variables.");
 }
 const baseUrl = isVercel ? "" : `http://localhost:${port}`;
