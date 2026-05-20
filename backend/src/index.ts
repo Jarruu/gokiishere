@@ -14,10 +14,12 @@ const app = new Hono();
 export default app;
 
 const port = process.env.PORT;
-if (!port) {
+const isVercel = process.env.VERCEL === "1";
+
+if (!port && !isVercel) {
   throw new Error("PORT is not defined in environment variables.");
 }
-const baseUrl = `http://localhost:${port}`;
+const baseUrl = isVercel ? "" : `http://localhost:${port}`;
 
 app.use("*", cors());
 app.use("/uploads/*", serveStatic({ root: "./" }));
@@ -33,7 +35,7 @@ app.get("/", (c) => {
 
 app.onError(errorHandler);
 
-if (process.env.NODE_ENV !== "test") {
+if (process.env.NODE_ENV !== "test" && !isVercel) {
   serve(
     {
       fetch: app.fetch,
